@@ -22,7 +22,7 @@ import java.util.List;
  * @author Josh Hug
  */
 public class SampleCreature extends Creature {
-    /**
+    /**n
      * red color.
      */
     private int r = 155;
