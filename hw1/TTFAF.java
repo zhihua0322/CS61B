@@ -1,3 +1,5 @@
+import es.datastructur.synthesizer.GuitarPlayer;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,7 +24,7 @@ public class TTFAF {
         }
 
         // You can also do this:
-        // GuitarPlayer player = new GuitarPlayer(new java.io.File("path/to/music.mid"));
+        // es.datastructur.synthesizer.GuitarPlayer player = new es.datastructur.synthesizer.GuitarPlayer(new java.io.File("path/to/music.mid"));
         // player.play();
     }
 

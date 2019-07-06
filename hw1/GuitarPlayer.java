@@ -1,3 +1,5 @@
+package es.datastructur.synthesizer;
+
 import edu.princeton.cs.algs4.StdAudio;
 import es.datastructur.synthesizer.GuitarString;
 

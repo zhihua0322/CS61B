@@ -16,6 +16,11 @@ public class GuitarString {
         //       cast the result of this division operation into an int. For
         //       better accuracy, use the Math.round() function before casting.
         //       Your buffer should be initially filled with zeros.
+        int bufferSize = (int) Math.round(SR / frequency);
+        this.buffer = new ArrayRingBuffer<>(bufferSize);
+        for (int i = 0; i < this.buffer.capacity(); i++) {
+            this.buffer.enqueue(0.0);
+        }
     }
 
 
@@ -27,6 +32,11 @@ public class GuitarString {
         //
         //       Make sure that your random numbers are different from each
         //       other.
+        for (int i = 0; i < this.buffer.capacity(); i++) {
+            this.buffer.dequeue();
+            double random = Math.random() % 0.5;
+            this.buffer.enqueue(random);
+        }
     }
 
     /* Advance the simulation one time step by performing one iteration of
@@ -36,12 +46,14 @@ public class GuitarString {
         // TODO: Dequeue the front sample and enqueue a new sample that is
         //       the average of the two multiplied by the DECAY factor.
         //       Do not call StdAudio.play().
+        double newSample = (buffer.dequeue() + buffer.peek()) / 2 * DECAY;
+        buffer.enqueue(newSample);
     }
 
     /* Return the double at the front of the buffer. */
     public double sample() {
         // TODO: Return the correct thing.
-        return 0;
+        return buffer.peek();
     }
 }
     // TODO: Remove all comments that say TODO when you're done.
