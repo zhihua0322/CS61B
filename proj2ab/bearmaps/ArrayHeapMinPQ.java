@@ -48,30 +48,29 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
     }
 
     private void swim (int k) {
-        while (k > 1 && greater(parent(k), k)) {
+        while (k > 0 && greater(parent(k), k)) {
             exch(k, parent(k));
             k = parent(k);
         }
     }
     private void sink (int k) {
-        while (rightChild(k) <= size()) {
+        while (leftChild(k) <= size()) {
             int j = leftChild(k);
-
-            if (rightChild(k) < size() && less(rightChild(k), j))
+            if (rightChild(k) < size() && less(rightChild(k), j)) {
                 j = rightChild(k);
-
-            if (!less(j, k))
+            }
+            if (less(k, j)) {
                 break;
-
+            }
             exch(k, j);
             k = j;
         }
     }
     private boolean greater (int i, int j) {
-        return heap.get(i).priority < heap.get(j).priority;
+        return heap.get(i).priority > heap.get(j).priority;
     }
     private boolean less (int i, int j) {
-        return heap.get(i).priority > heap.get(j).priority;
+        return heap.get(i).priority < heap.get(j).priority;
     }
 
     private void exch (int i, int j) {
@@ -90,16 +89,15 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
         if (heap.isEmpty()) {
             throw new NoSuchElementException();
         }
-        return heap.get(1).item;
+        return heap.get(0).item;
     }
     @Override
     public T removeSmallest() {
         if (heap.isEmpty()) {
             throw new NoSuchElementException();
         }
-        T min = heap.get(1).item;
-        exch(1, size() - 1);
-        sink(1);
+        T min = heap.get(0).item;
+        exch(0, size() - 1);
         heap.remove(size() - 1);// to avoid loiterig and help with garbage collection
         sink(0);
         items.remove(min);
@@ -108,7 +106,7 @@ public class ArrayHeapMinPQ<T> implements ExtrinsicMinPQ<T> {
     }
     @Override
     public int size() {
-        return items.size();
+        return heap.size();
     }
     @Override
     public void changePriority(T item, double priority) {
