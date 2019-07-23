@@ -21,7 +21,7 @@ public class KDTree implements PointSet{
     }
     public KDTree(List<Point> points) {
         for (Point p : points) {
-            root = add(p, root, HORIZONTAL);
+            root = add(p, root, VERTICAL);
         }
     }
     private Node add(Point p, Node n, boolean o) {
@@ -40,7 +40,7 @@ public class KDTree implements PointSet{
         return n;
     }
     private int comparePoints(Point a, Point b, boolean orientation) {
-        if (orientation == HORIZONTAL) {
+        if (orientation == VERTICAL) {
             return Double.compare(a.getX(), b.getX());
         } else {
             return Double.compare(a.getY(), b.getY());
