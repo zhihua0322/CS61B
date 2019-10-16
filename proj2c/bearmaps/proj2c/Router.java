@@ -1,13 +1,16 @@
 package bearmaps.proj2c;
 
 import bearmaps.hw4.WeirdSolver;
-import java.util.List;
+import bearmaps.hw4.WeightedEdge;
+
+import java.util.*;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * This class acts as a helper for the RoutingAPIHandler.
+ *
  * @author Josh Hug, ______
  */
 public class Router {
@@ -16,9 +19,10 @@ public class Router {
      * Overloaded method for shortestPath that has flexibility to specify a solver
      * and returns a List of longs representing the shortest path from the node
      * closest to a start location and the node closest to the destination location.
-     * @param g The graph to use.
-     * @param stlon The longitude of the start location.
-     * @param stlat The latitude of the start location.
+     *
+     * @param g       The graph to use.
+     * @param stlon   The longitude of the start location.
+     * @param stlat   The latitude of the start location.
      * @param destlon The longitude of the destination location.
      * @param destlat The latitude of the destination location.
      * @return A list of node id's in the order visited on the shortest path.
@@ -33,7 +37,8 @@ public class Router {
 
     /**
      * Create the list of directions corresponding to a route on the graph.
-     * @param g The graph to use.
+     *
+     * @param g     The graph to use.
      * @param route The route to translate into directions. Each element
      *              corresponds to a node from the graph in the route.
      * @return A list of NavigatiionDirection objects corresponding to the input
@@ -41,7 +46,134 @@ public class Router {
      */
     public static List<NavigationDirection> routeDirections(AugmentedStreetMapGraph g, List<Long> route) {
         /* fill in for part IV */
-        return null;
+        double distOnPrevWay = 0;
+        int prevDirToChange = 0; // Set default value to "Start".
+        int currDirToChange;
+        List<NavigationDirection> results = new LinkedList<>();
+        List<WeightedEdge<Long>> ways = getWays(g, route);
+
+        // Edge case, if there are only 2 vertices in route, namely start and destination,
+        // then the result is simple.
+        if (ways.size() == 1) {
+            NavigationDirection naviDir = setNaviDir(prevDirToChange, ways.get(0).getName(), ways.get(0).weight());
+            results.add(naviDir);
+            return results;
+        }
+
+        // Normal case, where there are at least 3 vertices (2 ways) in the route.
+        for (int i = 1; i < ways.size(); i += 1) {
+            WeightedEdge<Long> prevWay = ways.get(i - 1);
+            WeightedEdge<Long> currWay = ways.get(i);
+
+            long prevVertex = prevWay.from();
+            long currVertex = prevWay.to();
+            long nextVertex = currWay.to();
+
+            double[] prevPos = getPos(g, prevVertex);
+            double[] currPos = getPos(g, currVertex);
+            double[] nextPos = getPos(g, nextVertex);
+
+            // If the way has no name, set its name to "unknown road".
+            String prevWayName = prevWay.getName() != null ? prevWay.getName() : "unknown road";
+            String currWayName = currWay.getName() != null ? currWay.getName() : "unknown road";
+
+            // Since the prevWay is passed at this time, add its weight,
+            // i.e. the length of prevWay, to distOnPrevWay.
+            distOnPrevWay += prevWay.weight();
+
+            // If name of the way changes, it means that a NavigationDirection
+            // object needs to be created and be added to results.
+            if (!currWayName.equals(prevWayName)) {
+
+                // Calculate two bearings, prevBearing is the bearing between prevVertex and currVertex,
+                // currBearing is the bearing between currVertex between nextVertex.
+                double prevBearing = NavigationDirection.bearing(prevPos[0], currPos[0], prevPos[1], currPos[1]);
+                double currBearing = NavigationDirection.bearing(currPos[0], nextPos[0], currPos[1], nextPos[1]);
+
+                // Calculate what direction we are going based on the two bearings.
+                currDirToChange = NavigationDirection.getDirection(prevBearing, currBearing);
+
+                // Because a NavigationDirection object of a way needs the total distance travelled on
+                // that way, we cannot create a NavigationDirection object for the way we are travelling,
+                // until we meet a new way with another name. Therefore, every time we find currWayName
+                // is different from prevWayName, we create a NavigationDirection object for the way we
+                // just passed, which has name of prevWayName and direction of prevDirToChange.
+                NavigationDirection naviDir = setNaviDir(prevDirToChange, prevWayName, distOnPrevWay);
+
+                // Set prevDirToChange to currDirToChange, which will be used in next time naviDir creation.
+                prevDirToChange = currDirToChange;
+
+                // Add the NavigationDirection object of the way we just passed to the results.
+                results.add(naviDir);
+
+                // Because we changed to a new way with a different name, so reset the distance we travelled.
+                distOnPrevWay = 0;
+            }
+
+            // Check whether the dest is reached by currWay, i.e. whether currWay is the last
+            // way in ways. If yes, update the distance travelled, and create a NavigationDirection
+            // object for the currWay, because there is no chance to meet a new way, since the whole
+            // loop ends after this loop.
+            if (i == ways.size() - 1) {
+                distOnPrevWay += currWay.weight();
+                NavigationDirection naviDir = setNaviDir(prevDirToChange, currWayName, distOnPrevWay);
+                results.add(naviDir);
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Create a new NavigationDirection object from given direction, way, distance.
+     *
+     * @param direction
+     * @param way
+     * @param distance
+     * @return
+     */
+    private static NavigationDirection setNaviDir(int direction, String way, double distance) {
+        NavigationDirection naviDir = new NavigationDirection();
+        naviDir.direction = direction;
+        naviDir.way = way;
+        naviDir.distance = distance;
+        return naviDir;
+    }
+
+    /**
+     * Return a list of WeightedEdge that connected every two adjacent vertices in route.
+     *
+     * @param g
+     * @param route
+     * @return
+     */
+    private static List<WeightedEdge<Long>> getWays(AugmentedStreetMapGraph g, List<Long> route) {
+        List<WeightedEdge<Long>> ways = new LinkedList<>();
+        long currVertex;
+        long nextVertex;
+        for (int i = 1; i < route.size(); i += 1) {
+            currVertex = route.get(i - 1);
+            nextVertex = route.get(i);
+            for (WeightedEdge<Long> edge : g.neighbors(currVertex)) {
+                if (edge.to().equals(nextVertex)) {
+                    ways.add(edge);
+                }
+            }
+        }
+        return ways;
+    }
+
+    /**
+     * Return coordinates of an vertex in the form of an array [lon, lat].
+     *
+     * @param g
+     * @param vertex
+     * @return
+     */
+    private static double[] getPos(AugmentedStreetMapGraph g, long vertex) {
+        double[] pos = new double[2];
+        pos[0] = g.lon(vertex);
+        pos[1] = g.lat(vertex);
+        return pos;
     }
 
     /**
@@ -51,7 +183,9 @@ public class Router {
      */
     public static class NavigationDirection {
 
-        /** Integer constants representing directions. */
+        /**
+         * Integer constants representing directions.
+         */
         public static final int START = 0;
         public static final int STRAIGHT = 1;
         public static final int SLIGHT_LEFT = 2;
@@ -61,13 +195,19 @@ public class Router {
         public static final int SHARP_LEFT = 6;
         public static final int SHARP_RIGHT = 7;
 
-        /** Number of directions supported. */
+        /**
+         * Number of directions supported.
+         */
         public static final int NUM_DIRECTIONS = 8;
 
-        /** A mapping of integer values to directions.*/
+        /**
+         * A mapping of integer values to directions.
+         */
         public static final String[] DIRECTIONS = new String[NUM_DIRECTIONS];
 
-        /** Default name for an unknown way. */
+        /**
+         * Default name for an unknown way.
+         */
         public static final String UNKNOWN_ROAD = "unknown road";
 
         /** Static initializer. */
@@ -82,11 +222,17 @@ public class Router {
             DIRECTIONS[SHARP_RIGHT] = "Sharp right";
         }
 
-        /** The direction a given NavigationDirection represents.*/
+        /**
+         * The direction a given NavigationDirection represents.
+         */
         int direction;
-        /** The name of the way I represent. */
+        /**
+         * The name of the way I represent.
+         */
         String way;
-        /** The distance along this way I represent. */
+        /**
+         * The distance along this way I represent.
+         */
         double distance;
 
         /**
@@ -106,6 +252,7 @@ public class Router {
         /**
          * Takes the string representation of a navigation direction and converts it into
          * a Navigation Direction object.
+         *
          * @param dirAsString The string representation of the NavigationDirection.
          * @return A NavigationDirection object representing the input string.
          */
@@ -149,7 +296,9 @@ public class Router {
             }
         }
 
-        /** Checks that a value is between the given ranges.*/
+        /**
+         * Checks that a value is between the given ranges.
+         */
         private static boolean numInRange(double value, double from, double to) {
             return value >= from && value <= to;
         }
@@ -159,6 +308,7 @@ public class Router {
          * are the angles from true north. We compare the angles to see whether
          * we are making a left turn or right turn. Then we can just use the absolute value of the
          * difference to give us the degree of turn (straight, sharp, left, or right).
+         *
          * @param prevBearing A double in [0, 360.0]
          * @param currBearing A double in [0, 360.0]
          * @return the Navigation Direction type
@@ -197,8 +347,8 @@ public class Router {
         public boolean equals(Object o) {
             if (o instanceof NavigationDirection) {
                 return direction == ((NavigationDirection) o).direction
-                    && way.equals(((NavigationDirection) o).way)
-                    && distance == ((NavigationDirection) o).distance;
+                        && way.equals(((NavigationDirection) o).way)
+                        && distance == ((NavigationDirection) o).distance;
             }
             return false;
         }
@@ -215,10 +365,11 @@ public class Router {
          * end point.
          * Assumes the lon/lat methods are implemented properly.
          * <a href="https://www.movable-type.co.uk/scripts/latlong.html">Source</a>.
-         * @param lonV  The longitude of the first vertex.
-         * @param latV  The latitude of the first vertex.
-         * @param lonW  The longitude of the second vertex.
-         * @param latW  The latitude of the second vertex.
+         *
+         * @param lonV The longitude of the first vertex.
+         * @param latV The latitude of the first vertex.
+         * @param lonW The longitude of the second vertex.
+         * @param latW The latitude of the second vertex.
          * @return The initial bearing between the vertices.
          */
         public static double bearing(double lonV, double lonW, double latV, double latW) {
